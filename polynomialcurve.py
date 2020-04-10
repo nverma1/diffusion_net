@@ -1,6 +1,12 @@
 import numpy as np
 
 
+def space_to_unit(data, space_size):
+    return (data + space_size)/(2*space_size)
+
+def unit_to_space(data, space_size):
+    return ((data * 2 * space_size) - space_size)
+
 class PolynomialPointCurve:
     """An object encoding a randomly generated curve and several helper classes to generate noisy data about the curve/check accuracy of points near it"""
     def __init__(self, dimension=3, avg_dims_per_term=2.5, avg_power_per_dim=2, num_terms=6, mono_terms=True, avg_mono_term_power=1, space_size=2, max_coeff=4):
@@ -17,7 +23,13 @@ class PolynomialPointCurve:
 
         self.threshold = None
 
+    def space_to_unit(data):
+        return (data + self.space_size) / (2 * self.space_size)
+    def unit_to_space(data):
+        return ((data * 2 * self.space_size) - self.space_size)
+
     def compute_values(self, points): #Computes the polynomial on an input array of tuples. Input array should have dimensions (n_points, self.dimensions)
+        points = unit_to_space(points)
         out_vals = np.zeros(points.shape[0])
         for i in range (self.num_terms):
             pow_row = self.powers[i]
@@ -36,6 +48,7 @@ class PolynomialPointCurve:
         return self.threshold
 
     def compute_error(self, points, mode='mse'):  #Computes the error from 0 of the input points
+        points = unit_to_space(points)
         vals = self.compute_values(points)
         num_vals = points.shape[0]
         if mode == 'mse':
@@ -56,7 +69,7 @@ class PolynomialPointCurve:
             prosp_vals = self.compute_values(prosp_points)
             new_pts = prosp_points[prosp_vals<error_threshold]
             good_pts = np.concatenate([good_pts, new_pts], axis=0)
-        return good_pts[:num_points]
+        return space_to_unit(good_pts[:num_points])
 
 
 
