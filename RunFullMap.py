@@ -24,7 +24,7 @@ import LaplacianEigenmaps
 
 
 class DiffusionNet:
-    def __init__(self, training_data, embedding_size, k=16, N_EPOCHS=2000, visual=False):
+    def __init__(self, training_data, embedding_size, k=16, N_EPOCHS=2000, visual=False, embedding='normal'):
         print ("Gpu available: ", tf.test.is_gpu_available())
         S1_train = training_data
         n_train = S1_train.shape[0]
@@ -34,7 +34,18 @@ class DiffusionNet:
         P = df.makeRowStoch(K_mat)  # markov matrix
         E1, v1 = df.Diffusion(K_mat, nEigenVals=embedding_size + 1)  # eigenvalues and eigenvectors
         S1_embedding = np.matmul(E1, np.diag(v1))
-        embedding = S1_embedding
+
+        Idx, Dx = df.Knnsearch(S1_train, S1_train, k)
+        adj, _ = df.ComputeKernel(Idx, Dx)
+        adj = adj - np.eye(n_train)  # this is adjacency, remove 1 because everyone is own neighbor
+        E2, v2 = LaplacianEigenmaps.spectral_embedding(adj, n_components=embedding_size, norm_laplacian=False)
+        new_embedding = np.matmul(E2, np.diag(v2))
+
+        if embedding=='laplacian':
+            embedding = new_embedding
+            print("Using laplacian embedding")
+        else:
+            embedding = S1_embedding
 
 
         print("Done embedding")
