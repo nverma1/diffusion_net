@@ -16,9 +16,9 @@ class PolynomialPointCurve:
 
         self.threshold = None
 
-    def space_to_unit(data):
+    def space_to_unit(self,data):
         return (data + self.space_size) / (2 * self.space_size)
-    def unit_to_space(data):
+    def unit_to_space(self,data):
         return ((data * 2 * self.space_size) - self.space_size)
 
     def compute_values(self, points): #Computes the polynomial on an input array of tuples. Input array should have dimensions (n_points, self.dimensions)
