@@ -17,7 +17,6 @@ from keras.layers import Dense, Input
 from keras.models import Model
 from keras import regularizers
 
-from pcn import PolynomialPointCurve
 import LaplacianEigenmaps
 
 
