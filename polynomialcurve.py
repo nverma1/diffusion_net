@@ -1,12 +1,5 @@
 import numpy as np
 
-
-def space_to_unit(data, space_size):
-    return (data + space_size)/(2*space_size)
-
-def unit_to_space(data, space_size):
-    return ((data * 2 * space_size) - space_size)
-
 class PolynomialPointCurve:
     """An object encoding a randomly generated curve and several helper classes to generate noisy data about the curve/check accuracy of points near it"""
     def __init__(self, dimension=3, avg_dims_per_term=2.5, avg_power_per_dim=2, num_terms=6, mono_terms=True, avg_mono_term_power=1, space_size=2, max_coeff=4):
