@@ -36,9 +36,9 @@ class DiffusionNet:
             Idx, Dx = df.Knnsearch(S1_train, S1_train, k)
             adj, _ = df.ComputeKernel(Idx, Dx)
             adj = adj - np.eye(n_train)  # this is adjacency, remove 1 because everyone is own neighbor
-            E, v2 = LaplacianEigenmaps.spectral_embedding(adj, n_components=embedding_size, norm_laplacian=False)
+            E, v = LaplacianEigenmaps.spectral_embedding(adj, n_components=embedding_size, norm_laplacian=False)
             #print (E2.shape, v2.shape)
-            new_embedding = np.matmul(E, np.diag(v2))
+            new_embedding = np.matmul(E, np.diag(v))
             #new_embedding /= np.expand_dims(np.sum(np.abs(E2),axis=0),axis=0)
             #print(new_embedding.shape)
             embedding = new_embedding
@@ -48,8 +48,8 @@ class DiffusionNet:
         else:
             K_mat = df.ComputeLBAffinity(S1_train, k, sig=0.1)  # Laplace-Beltrami affinity: D^-1 * K * D^-1
             P = df.makeRowStoch(K_mat)  # markov matrix
-            E, v1 = df.Diffusion(K_mat, nEigenVals=embedding_size + 1)  # eigenvalues and eigenvectors
-            S1_embedding = np.matmul(E, np.diag(v1))
+            E, v = df.Diffusion(K_mat, nEigenVals=embedding_size + 1)  # eigenvalues and eigenvectors
+            S1_embedding = np.matmul(E, np.diag(v))
             embedding = S1_embedding
 
             embedding_matrix = P
@@ -92,7 +92,7 @@ class DiffusionNet:
 
         embedding_matrix = tf.cast(tf.constant(embedding_matrix), tf.float32)
         E1 = tf.cast(tf.constant(E), tf.float32)
-        v1 = tf.cast(tf.constant(v1), tf.float32)
+        v = tf.cast(tf.constant(v), tf.float32)
         init = tf.constant(autoencoder1.get_weights()[0])
         E_W1 = tf.Variable(init)
         init = tf.constant(autoencoder1.get_weights()[1])
