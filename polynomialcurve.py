@@ -2,7 +2,9 @@ import numpy as np
 
 class PolynomialPointCurve:
     """An object encoding a randomly generated curve and several helper classes to generate noisy data about the curve/check accuracy of points near it"""
-    def __init__(self, dimension=3, avg_dims_per_term=2.5, avg_power_per_dim=2, num_terms=6, mono_terms=True, avg_mono_term_power=1, space_size=2, max_coeff=4):
+    def __init__(self, dimension=3, avg_dims_per_term=2.5, avg_power_per_dim=2, num_terms=6, mono_terms=True, avg_mono_term_power=1, space_size=2, max_coeff=4, seed=None):
+        if seed is not None:
+            np.random.seed(seed)
         self.dimension = dimension
         self.space_size = space_size
         self.num_terms = num_terms
@@ -15,6 +17,8 @@ class PolynomialPointCurve:
             self.powers[np.diag_indices(dimension)] = np.random.randint(1, avg_mono_term_power*2+1, dimension)
 
         self.threshold = None
+        self.pos_poly_ratio = None
+
 
     def space_to_unit(self,data):
         return (data + self.space_size) / (2 * self.space_size)
@@ -40,17 +44,27 @@ class PolynomialPointCurve:
         self.threshold = np.sort(vals)[accuracy_coeff]
         return self.threshold
 
-    def compute_error(self, points, mode='mse'):  #Computes the error from 0 of the input points
+    def compute_error(self, points, mode='mse', orig_points = None, positional_error_coeff = 1):  #Computes the error from 0 of the input points
         points = self.unit_to_space(points)
         vals = self.compute_values(points)
         num_vals = points.shape[0]
         if mode == 'mse':
-            return np.sum(np.square(vals))/num_vals
+            polynomial_error = np.sum(np.square(vals))/num_vals
         elif mode == 'mae':
-            return np.sum(vals)/num_vals
+            polynomial_error = np.sum(vals)/num_vals
         else:
             print("Mode unrecognized! Exiting...")
             exit()
+
+        if orig_points is None:
+            positional_error = 0
+        else:
+            deltas = np.sqrt(np.sum(np.square(points-orig_points), axis=-1))*positional_error_coeff
+            if mode == 'mse':
+                deltas=np.square(deltas)
+            positional_error = np.sum(np.square(deltas))/num_vals
+        return polynomial_error + positional_error
+
 
     def gen_noisy_points(self, num_points, error_threshold=None): #Generates points with value around 0 (sampling spatially uniformly across all points below the error threshold)
         if error_threshold is None:
