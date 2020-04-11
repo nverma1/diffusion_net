@@ -4,6 +4,7 @@ import keras.backend as K
 import tensorflow as tf
 import sklearn.manifold
 import sklearn.metrics
+from scipy.sparse.csgraph import laplacian as csgraph_laplacian
 
 import Diffusion as df
 import os.path
@@ -17,6 +18,7 @@ from keras.layers import Dense, Input
 from keras.models import Model
 from keras import regularizers
 
+
 import LaplacianEigenmaps
 
 
@@ -28,26 +30,29 @@ class DiffusionNet:
         S1_train = training_data
         n_train = S1_train.shape[0]
         input_size = S1_train.shape[1]
-        batch_size = S1_train.shape[0]
-        K_mat = df.ComputeLBAffinity(S1_train, k, sig=0.1)  # Laplace-Beltrami affinity: D^-1 * K * D^-1
-        P = df.makeRowStoch(K_mat)  # markov matrix
-        E1, v1 = df.Diffusion(K_mat, nEigenVals=embedding_size + 1)  # eigenvalues and eigenvectors
-        S1_embedding = np.matmul(E1, np.diag(v1))
-
-        Idx, Dx = df.Knnsearch(S1_train, S1_train, k)
-        adj, _ = df.ComputeKernel(Idx, Dx)
-        adj = adj - np.eye(n_train)  # this is adjacency, remove 1 because everyone is own neighbor
-        E2, v2 = LaplacianEigenmaps.spectral_embedding(adj, n_components=embedding_size, norm_laplacian=False)
-        #print (E2.shape, v2.shape)
-        new_embedding = np.matmul(E2, np.diag(v2))
-        #new_embedding /= np.expand_dims(np.sum(np.abs(E2),axis=0),axis=0)
-        print(new_embedding.shape)
+        batch_size = S1_train.shape[0]                
 
         if embedding=='laplacian':
+            Idx, Dx = df.Knnsearch(S1_train, S1_train, k)
+            adj, _ = df.ComputeKernel(Idx, Dx)
+            adj = adj - np.eye(n_train)  # this is adjacency, remove 1 because everyone is own neighbor
+            E, v2 = LaplacianEigenmaps.spectral_embedding(adj, n_components=embedding_size, norm_laplacian=False)
+            #print (E2.shape, v2.shape)
+            new_embedding = np.matmul(E, np.diag(v2))
+            #new_embedding /= np.expand_dims(np.sum(np.abs(E2),axis=0),axis=0)
+            #print(new_embedding.shape)
             embedding = new_embedding
+
+            embedding_matrix = csgraph_laplacian(adj, normed=False,return_diag=False)
             print("Using laplacian embedding")
         else:
+            K_mat = df.ComputeLBAffinity(S1_train, k, sig=0.1)  # Laplace-Beltrami affinity: D^-1 * K * D^-1
+            P = df.makeRowStoch(K_mat)  # markov matrix
+            E, v1 = df.Diffusion(K_mat, nEigenVals=embedding_size + 1)  # eigenvalues and eigenvectors
+            S1_embedding = np.matmul(E, np.diag(v1))
             embedding = S1_embedding
+
+            embedding_matrix = P
 
 
         print("Done embedding")
@@ -84,8 +89,9 @@ class DiffusionNet:
                                           batch_size, reg_par=1e-10, n_epochs=N_EPOCHS)
         de_encoder3_train = de_encoder3.predict(de_encoder2_train)
         print("Done decoder")
-        P = tf.cast(tf.constant(P), tf.float32)
-        E1 = tf.cast(tf.constant(E1), tf.float32)
+
+        embedding_matrix = tf.cast(tf.constant(embedding_matrix), tf.float32)
+        E1 = tf.cast(tf.constant(E), tf.float32)
         v1 = tf.cast(tf.constant(v1), tf.float32)
         init = tf.constant(autoencoder1.get_weights()[0])
         E_W1 = tf.Variable(init)
@@ -135,7 +141,7 @@ class DiffusionNet:
         encoder_fidelity_loss = tf.reduce_mean(tf.square(Y - Z))
         encoder_eigen_loss = 0
         for i in range(embedding_size):
-            mat = P - v1[i] * np.eye(n_train, dtype=np.float32)
+            mat = embedding_matrix - v1[i] * np.eye(n_train, dtype=np.float32)
             z_vec = tf.slice(Z, [0, i], [-1, 1])
             vec = tf.matmul(mat, z_vec)
             encoder_eigen_loss += tf.reduce_mean(tf.square(vec))
