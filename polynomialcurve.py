@@ -46,6 +46,7 @@ class PolynomialPointCurve:
 
     def compute_error(self, points, mode='mse', orig_points = None, positional_error_coeff = 1):  #Computes the error from 0 of the input points
         points = self.unit_to_space(points)
+        orig_points = self.unit_to_space(orig_points)
         vals = self.compute_values(points)
         num_vals = points.shape[0]
         if mode == 'mse':
