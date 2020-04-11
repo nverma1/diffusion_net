@@ -141,7 +141,7 @@ class DiffusionNet:
         encoder_fidelity_loss = tf.reduce_mean(tf.square(Y - Z))
         encoder_eigen_loss = 0
         for i in range(embedding_size):
-            mat = embedding_matrix - v1[i] * np.eye(n_train, dtype=np.float32)
+            mat = embedding_matrix - v[i] * np.eye(n_train, dtype=np.float32)
             z_vec = tf.slice(Z, [0, i], [-1, 1])
             vec = tf.matmul(mat, z_vec)
             encoder_eigen_loss += tf.reduce_mean(tf.square(vec))
