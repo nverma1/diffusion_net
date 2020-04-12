@@ -25,7 +25,7 @@ import LaplacianEigenmaps
 
 
 class DiffusionNet:
-    def __init__(self, training_data, embedding_size, k=16, N_EPOCHS=2000, visual=False, embedding='normal'):
+    def __init__(self, training_data, embedding_size, k=16, N_EPOCHS=2000, visual=False, embedding='normal', eig_power=1):
         print ("Gpu available: ", tf.test.is_gpu_available())
         S1_train = training_data
         n_train = S1_train.shape[0]
@@ -33,22 +33,34 @@ class DiffusionNet:
         batch_size = S1_train.shape[0]                
 
         if embedding=='laplacian':
+            print("Using laplacian embedding")
             Idx, Dx = df.Knnsearch(S1_train, S1_train, k)
             adj, _ = df.ComputeKernel(Idx, Dx)
             adj = adj - np.eye(n_train)  # this is adjacency, remove 1 because everyone is own neighbor
             E, v = LaplacianEigenmaps.spectral_embedding(adj, n_components=embedding_size, norm_laplacian=False)
             #print (E2.shape, v2.shape)
             new_embedding = np.matmul(E, np.diag(v))
-            #new_embedding /= np.expand_dims(np.sum(np.abs(E2),axis=0),axis=0)
+            print (np.sum(np.abs(new_embedding),axis=0))
+            #new_embedding /= np.expand_dims(np.sum(np.abs(new_embedding),axis=0),axis=0)
             #print(new_embedding.shape)
             embedding = new_embedding
 
-            embedding_matrix = csgraph_laplacian(adj, normed=False,return_diag=False)
-            print("Using laplacian embedding")
+            embedding_matrix = csgraph_laplacian(adj, normed=False, return_diag=False)
+
+        elif embedding == 'pow_ev':
+            print("Using power embedding")
+            K_mat = df.ComputeLBAffinity(S1_train, k, sig=0.1)  # Laplace-Beltrami affinity: D^-1 * K * D^-1
+            P = df.makeRowStoch(K_mat)  # markov matrix
+            E, v = df.Diffusion(K_mat, nEigenVals=embedding_size + 1)  # eigenvalues and eigenvectors
+            v = np.power(v, eig_power)
+            S1_embedding = np.matmul(E, np.diag(v))
+            embedding = S1_embedding
+            embedding_matrix = P
         else:
             K_mat = df.ComputeLBAffinity(S1_train, k, sig=0.1)  # Laplace-Beltrami affinity: D^-1 * K * D^-1
             P = df.makeRowStoch(K_mat)  # markov matrix
             E, v = df.Diffusion(K_mat, nEigenVals=embedding_size + 1)  # eigenvalues and eigenvectors
+
             S1_embedding = np.matmul(E, np.diag(v))
             embedding = S1_embedding
 
