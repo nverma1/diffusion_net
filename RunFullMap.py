@@ -25,16 +25,19 @@ import LaplacianEigenmaps
 
 
 class DiffusionNet:
-    def __init__(self, training_data, embedding_size, k=16, N_EPOCHS=2000, visual=False, embedding='normal', eig_power=1):
+    def __init__(self, training_data, embedding_size, k=16, r=1.0, N_EPOCHS=2000, visual=False, embedding='normal', eig_power=1, nearest_neighbors="knn"):
         print ("Gpu available: ", tf.test.is_gpu_available())
         S1_train = training_data
         n_train = S1_train.shape[0]
         input_size = S1_train.shape[1]
-        batch_size = S1_train.shape[0]                
+        batch_size = S1_train.shape[0]
+        if nearest_neighbors == 'knn':
+            Idx, Dx = df.Knnsearch(S1_train, S1_train, k)
+        elif nearest_neighbors == 'radius':
+            Idx, Dx = df.RadiusSearch(X,Y,r)            
 
         if embedding=='laplacian':
-            print("Using laplacian embedding")
-            Idx, Dx = df.Knnsearch(S1_train, S1_train, k)
+            print("Using laplacian embedding")            
             adj, _ = df.ComputeKernel(Idx, Dx)
             adj = adj - np.eye(n_train)  # this is adjacency, remove 1 because everyone is own neighbor
             E, v = LaplacianEigenmaps.spectral_embedding(adj, n_components=embedding_size, norm_laplacian=False)
@@ -45,7 +48,7 @@ class DiffusionNet:
             #print(new_embedding.shape)
             embedding = new_embedding
 
-            embedding_matrix = csgraph_laplacian(adj, normed=False, return_diag=False)
+            embedding_matrix = adj + np.eye(n_train)
 
         elif embedding == 'pow_ev':
             print("Using power embedding")
