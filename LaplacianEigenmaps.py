@@ -10,7 +10,7 @@ from scipy.sparse.csgraph import laplacian as csgraph_laplacian
 from sklearn.base import BaseEstimator
 from sklearn.utils import check_random_state, check_array, check_symmetric
 from sklearn.utils.extmath import _deterministic_vector_sign_flip
-from sklearn.utils.fixes import lobpcg
+#from sklearn.utils.fixes import lobpcg
 from sklearn.metrics.pairwise import rbf_kernel
 from sklearn.neighbors import kneighbors_graph, NearestNeighbors
 
