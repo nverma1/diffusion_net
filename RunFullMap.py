@@ -32,7 +32,9 @@ class DiffusionNet:
         if nearest_neighbors == 'knn':
             Idx, Dx = df.Knnsearch(S1_train, S1_train, k)
         elif nearest_neighbors == 'radius':
-            Idx, Dx = df.RadiusSearch(S1_train,S1_train,r)                
+            Idx, Dx = df.RadiusSearch(S1_train,S1_train,r)
+        else:
+            print ("Nearest neighbors not recognized!")
 
         if embedding=='laplacian':
             print("Using laplacian embedding")            
