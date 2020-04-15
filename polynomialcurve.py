@@ -44,27 +44,35 @@ class PolynomialPointCurve:
         self.threshold = np.sort(vals)[accuracy_coeff]
         return self.threshold
 
-    def compute_error(self, points, mode='mse', orig_points = None, positional_error_coeff = 1):  #Computes the error from 0 of the input points
+    def compute_error(self, points, mode='mse', orig_points = None, error_type = 'evaluative'):  #Computes the error from 0 of the input points
         points = self.unit_to_space(points)
         orig_points = self.unit_to_space(orig_points)
         vals = self.compute_values(points)
         num_vals = points.shape[0]
-        if mode == 'mse':
-            polynomial_error = np.sum(np.square(vals))/num_vals
-        elif mode == 'mae':
-            polynomial_error = np.sum(vals)/num_vals
-        else:
-            print("Mode unrecognized! Exiting...")
-            exit()
 
-        if orig_points is None:
-            positional_error = 0
-        else:
-            deltas = np.sqrt(np.sum(np.square(points-orig_points), axis=-1))*positional_error_coeff
+        if error_type == 'evaluative':
             if mode == 'mse':
-                deltas=np.square(deltas)
-            positional_error = np.sum(np.square(deltas))/num_vals
-        return polynomial_error + positional_error
+                polynomial_error = np.sum(np.square(vals))/num_vals
+            elif mode == 'mae':
+                polynomial_error = np.sum(vals)/num_vals
+            else:
+                print("Mode unrecognized! Exiting...")
+                exit()
+            return polynomial_error
+        elif error_type == 'positional':
+            if orig_points is None:
+                positional_error = 0
+            else:
+                diffs = np.square(points - orig_points)
+                errors = np.sum(diffs, axis=-1)
+                if mode == 'mae':
+                    errors = np.sqrt(errors)
+                positional_error = np.average(errors)
+            return positional_error
+        else:
+            print ("Error type not recognized")
+            return None
+        #return polynomial_error + positional_error
 
 
     def gen_noisy_points(self, num_points, error_threshold=None): #Generates points with value around 0 (sampling spatially uniformly across all points below the error threshold)
