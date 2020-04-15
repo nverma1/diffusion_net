@@ -39,8 +39,7 @@ def makeRowStoch(K):
     D_inv = np.linalg.inv(D)
     return np.dot(D_inv,K)
 
-def ComputeLBAffinity(X, k=16,sig=0):
-    Idx, Dx = Knnsearch(X, X, k)
+def ComputeLBAffinity(Idx, Dx,sig=0):
     K,W = ComputeKernel(Idx, Dx, sig=sig)
     d = np.sum(K, axis = 0)
     D = np.diag(d)
@@ -50,6 +49,11 @@ def ComputeLBAffinity(X, k=16,sig=0):
 
 def Knnsearch(X,Y,k):
     nbrs = NearestNeighbors(n_neighbors=k, algorithm='auto').fit(X)
+    Dx, Idx = nbrs.kneighbors(Y)
+    return (Idx,Dx)
+
+def RadiusSearch(X,Y,r):
+    nbrs = NearestNeighbors(radius=r, algorithm='auto').fit(X)
     Dx, Idx = nbrs.kneighbors(Y)
     return (Idx,Dx)
 
