@@ -22,22 +22,23 @@ from keras import regularizers
 import LaplacianEigenmaps
 
 
-
-
 class DiffusionNet:
-    def __init__(self, training_data, embedding_size, k=16, N_EPOCHS=2000, visual=False, embedding='normal', eig_power=1):
+    def __init__(self, training_data, embedding_size, k=16, r=1.0, N_EPOCHS=2000, visual=False, embedding='normal', eig_power=1, nearest_neighbors="knn"):
         print ("Gpu available: ", tf.test.is_gpu_available())
         S1_train = training_data
         n_train = S1_train.shape[0]
         input_size = S1_train.shape[1]
-        batch_size = S1_train.shape[0]                
+        batch_size = S1_train.shape[0]
+        if nearest_neighbors == 'knn':
+            Idx, Dx = df.Knnsearch(S1_train, S1_train, k)
+        elif nearest_neighbors == 'radius':
+            Idx, Dx = df.RadiusSearch(S1_train,S1_train,r)                
 
         if embedding=='laplacian':
-            print("Using laplacian embedding")
-            Idx, Dx = df.Knnsearch(S1_train, S1_train, k)
+            print("Using laplacian embedding")            
             adj, _ = df.ComputeKernel(Idx, Dx)
             adj = adj - np.eye(n_train)  # this is adjacency, remove 1 because everyone is own neighbor
-            E, v = LaplacianEigenmaps.spectral_embedding(adj, n_components=embedding_size, norm_laplacian=False)
+            E, v = LaplacianEigenmaps.spectral_embedding(adj, n_components=embedding_size, norm_laplacian=False) #E has eigvecs. 
             #print (E2.shape, v2.shape)
             new_embedding = np.matmul(E, np.diag(v))
             print (np.sum(np.abs(new_embedding),axis=0))
@@ -45,11 +46,11 @@ class DiffusionNet:
             #print(new_embedding.shape)
             embedding = new_embedding
 
-            embedding_matrix = csgraph_laplacian(adj, normed=False, return_diag=False)
+            embedding_matrix = adj + np.eye(n_train) #kernel to match P calc
 
         elif embedding == 'pow_ev':
             print("Using power embedding")
-            K_mat = df.ComputeLBAffinity(S1_train, k, sig=0.1)  # Laplace-Beltrami affinity: D^-1 * K * D^-1
+            K_mat = df.ComputeLBAffinity(Idx, Dx, sig=0.1)  # Laplace-Beltrami affinity: D^-1 * K * D^-1
             P = df.makeRowStoch(K_mat)  # markov matrix
             E, v = df.Diffusion(K_mat, nEigenVals=embedding_size + 1)  # eigenvalues and eigenvectors
             v = np.power(v, eig_power)
@@ -57,7 +58,7 @@ class DiffusionNet:
             embedding = S1_embedding
             embedding_matrix = P
         else:
-            K_mat = df.ComputeLBAffinity(S1_train, k, sig=0.1)  # Laplace-Beltrami affinity: D^-1 * K * D^-1
+            K_mat = df.ComputeLBAffinity(Idx, Dx, sig=0.1)  # Laplace-Beltrami affinity: D^-1 * K * D^-1
             P = df.makeRowStoch(K_mat)  # markov matrix
             E, v = df.Diffusion(K_mat, nEigenVals=embedding_size + 1)  # eigenvalues and eigenvectors
 
@@ -102,9 +103,10 @@ class DiffusionNet:
         de_encoder3_train = de_encoder3.predict(de_encoder2_train)
         print("Done decoder")
 
-        embedding_matrix = tf.cast(tf.constant(embedding_matrix), tf.float32)
+        embedding_matrix = tf.cast(tf.constant(embedding_matrix), tf.float32) #this is what is learned?
         E1 = tf.cast(tf.constant(E), tf.float32)
         v = tf.cast(tf.constant(v), tf.float32)
+        v_learned = tf.Variable(v)
         init = tf.constant(autoencoder1.get_weights()[0])
         E_W1 = tf.Variable(init)
         init = tf.constant(autoencoder1.get_weights()[1])
