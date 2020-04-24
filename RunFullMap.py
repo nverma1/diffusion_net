@@ -60,11 +60,22 @@ class DiffusionNet:
             embedding = S1_embedding
             embedding_matrix = P
         else:
+            n_paths = 5
+
             K_mat = df.ComputeLBAffinity(Idx, Dx, sig=0.1)  # Laplace-Beltrami affinity: D^-1 * K * D^-1
             P = df.makeRowStoch(K_mat)  # markov matrix
             E, v = df.Diffusion(K_mat, nEigenVals=embedding_size + 1)  # eigenvalues and eigenvectors
 
-            S1_embedding = np.matmul(E, np.diag(v))
+            if embedding == 'lw':
+                print("Using power-weights")
+                diffusion_weights = [np.power(v, i + 1) for i in range(n_paths)]
+                learned_weights = [0.03628454, 0.04951781, 0.05088329, 0.0490393, 0.04888101]
+                sum_diffusion = 0
+                for i in range(n_paths):
+                    sum_diffusion += learned_weights[i] * diffusion_weights[i]
+                S1_embedding = np.matmul(E, np.diag(sum_diffusion))
+            else:
+                S1_embedding = np.matmul(E, np.diag(v))
             embedding = S1_embedding
 
             embedding_matrix = P
